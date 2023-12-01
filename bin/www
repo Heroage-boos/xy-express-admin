@@ -1,0 +1,80 @@
+#!/usr/bin/env node
+var app = require('../index');
+var debug = require('debug')('myapp:server');
+var http = require('http');
+
+/**
+ * 获取端口号
+ */
+
+var port = normalizePort(process.env.PORT || '9999');
+app.set('port', port);
+
+/**
+ * 创建 HTTP 服务器。
+ */
+
+var server = http.createServer(app);
+
+/**
+ * 事件监听器，用于处理服务器的 "error" 事件。当服务器启动失败时，会触发 "error" 事件。
+ */
+server.listen(port);
+server.on('error', onError);
+server.on('listening', onListening);
+
+
+function normalizePort(val) {
+  var port = parseInt(val, 10);
+
+  if (isNaN(port)) {
+   // 命名管道
+    return val;
+  }
+
+  if (port >= 0) {
+    // 端口号
+    return port;
+  }
+
+  return false;
+}
+
+/**
+ * 事件监听器，用于处理服务器的 "error" 事件。当服务器启动失败时，会触发 "error" 事件。
+ */
+function onError(error) {
+  if (error.syscall !== 'listen') {
+    throw error;
+  }
+
+  // 处理特殊的错误类型，并给出友好的错误提示
+  var bind = typeof port === 'string'
+    ? 'Pipe ' + port
+    : 'Port ' + port;
+
+  // 处理特殊的错误类型，并给出友好的错误提示
+  switch (error.code) {
+    case 'EACCES':
+      console.error(bind + ' requires elevated privileges');
+      process.exit(1);
+      break;
+    case 'EADDRINUSE':
+      console.error(bind + ' is already in use');
+      process.exit(1);
+      break;
+    default:
+      throw error;
+  }
+}
+
+/**
+ * 事件监听器，用于处理服务器的 "listening" 事件。当服务器开始在指定的端口上监听请求
+ */
+function onListening() {
+  var addr = server.address();
+  var bind = typeof addr === 'string'
+    ? 'pipe ' + addr
+    : 'port ' + addr.port;
+  debug('Listening on ' + bind);//打印出服务器正在监听的地址和端口。
+}
