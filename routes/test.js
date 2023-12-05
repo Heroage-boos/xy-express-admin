@@ -4,7 +4,7 @@
  */
 
 const express = require("express");
-const router = express.Router()
+const router = express.Router();
 
 /**
  * GET请求测试路由

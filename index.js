@@ -3,13 +3,13 @@
  * Express应用程序的入口文件
  * @module index
  */
-
 const express = require("express");
 const httpErrors = require("http-errors");
 const path = require("path");
 const logger = require('morgan'); //记录日志
 var cookieParser = require('cookie-parser'); //cookie解析器
-const taotiaoRouter = require("./routes/toutiao");
+const routers=require("./routes/index")
+const router=express.Router();
 const testRouter = require("./routes/test");
 const userRouter = require("./routes/user");
 
@@ -37,9 +37,16 @@ app.get("/", (req, res) => {
     res.send("hello world!");
 });
 
+//普通路由
 app.use(testRouter);
 app.use(userRouter);
-app.use(taotiaoRouter);
+
+//爬虫路由
+for (const r of routers) {
+    console.log("rrrrrrr",r)
+    app.use(r.path, require(path.join(__dirname, r.component))); // 添加路由处理中间件
+}
+app.use(router);
 
 // 处理404错误
 app.use(function (req, res, next) {
