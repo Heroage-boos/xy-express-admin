@@ -15,7 +15,7 @@ app.get('/', async (req, res) => {
     try {
         const html = await fetchHTML(targetUrl, header);
         const info = extractInformation(html);
-        writeToFile('filename', info);
+        writeToFile('./public/txt/zhihu.txt', info);
         res.json(info);
     } catch (err) {
         res.status(500).send('Server Error!');
