@@ -9,6 +9,7 @@ const httpErrors = require("http-errors");
 const path = require("path");
 const logger = require('morgan'); //记录日志
 var cookieParser = require('cookie-parser'); //cookie解析器
+const taotiaoRouter = require("./routes/toutiao");
 const testRouter = require("./routes/test");
 const userRouter = require("./routes/user");
 
@@ -38,6 +39,7 @@ app.get("/", (req, res) => {
 
 app.use(testRouter);
 app.use(userRouter);
+app.use(taotiaoRouter);
 
 // 处理404错误
 app.use(function (req, res, next) {
@@ -55,18 +57,12 @@ app.use(function (err, req, res, next) {
     res.render('error');
 });
 
-// /**
-//  * 启动Express应用程序的服务器
-//  * @param {string} port - 服务器监听的端口号
-//  * @param {function} callback - 服务器启动成功后的回调函数
-//  */
-// app.listen("9999", (error) => {
-//     if (error) {
-//         console.log("服务器启动失败!");
-//         return;
+// app.listen("9999",(err)=>{
+//     if(err){
+//         console.log("服务器启动失败",err);
+//     }else{
+//         console.log("服务器启动成功");
 //     }
-//     console.log("服务器启动成功!");
 // });
-
 module.exports = app;
 

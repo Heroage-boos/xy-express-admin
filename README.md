@@ -726,3 +726,307 @@ $ npm install
 $ npm run start
 ```
 
+
+
+### 8.express框架搭建爬虫并写入文件
+
+本文主要使用Node.js的Express框架搭建一个简单的知乎爬虫示例。
+
+首先我们需要搭建一个简单的Express框架，如果没有的话可以参考我的上一篇文章简单搭建一下，复制运行代码即可。
+
+#### axios获取HTML
+
+安装axios包：
+
+```shell
+$ npm install axios
+```
+
+在你的Express应用中使用axios来请求目标网页：
+
+```javascript
+const axios = require('axios');
+
+async function fetchHTML(url, header) {
+    const resopnse = await axios.get(url,
+        header
+    );
+    return resopnse;
+}
+```
+
+#### HTML解析cheerio
+
+安装cheerio包：
+
+```shell
+$ npm install cheerio
+```
+
+使用cheerio来解析获取到的HTML并提取信息：
+
+```javascript
+const cheerio = require('cheerio');
+
+function extractInformation(html) {
+    // 使用cheerio加载页面内容，类似于jQuery
+    const $ = cheerio.load(html);
+    console.log("$$$$", $);
+    
+    // 使用选择器语法筛选有效数据  
+    const titles = $('h2.ContentItem-title').map((i, el) => $(el).text()).get();//获取知乎标题
+    const content = $('div.RichContent-inner > .css-376mun > span.RichText').map((i, el) => $(el).text()).get();//标题下的内容，不完整，需要什么数据自己后面添加筛选
+    
+    // 返回提取的数据
+    return {
+        titles,
+        content
+    }
+}
+```
+
+#### 写入到本地文件中
+
+使用Node.js内置的`fs`模块来将提取的信息写入本地文件，不清楚的可以参考我之前的文章：。
+
+```javascript
+const fs = require('fs');
+
+function writeToFile(filename, content) {
+    fs.writeFileSync(filename, JSON.stringify(content), "utf-8", (err) => {
+        if (err) {
+            console.error('Writing to file failed:', err);
+        } else {
+            console.log('Success writing to file:', filename);
+        }
+    })
+}
+
+```
+
+#####   效果展示
+
+![image-20231204171940151](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20231204171940151.png)
+
+####   完整代码
+
+#####    目录结构
+
+![image-20231205092519570](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20231205092519570.png)
+
+```javascript
+/**
+ * app.js （index.js）
+ * Express应用程序的入口文件
+ * @module index
+ */
+
+/**
+ * Express应用程序的入口文件
+ * @module index
+ */
+
+const express = require("express");
+const httpErrors = require("http-errors");
+const path = require("path");
+const logger = require('morgan'); //记录日志
+var cookieParser = require('cookie-parser'); //cookie解析器
+const taotiaoRouter = require("./routes/toutiao");
+const testRouter = require("./routes/test");
+const userRouter = require("./routes/user");
+
+const app = express();
+
+// 使用模板引擎
+app.set('views', path.join(__dirname, 'views'));
+app.set('view engine', 'pug');
+
+// 日志服务中间件
+app.use(logger('dev'));
+
+app.use(express.json());//用于解析 JSON 格式的请求体 当客户端发送一个包含 JSON 数据的 POST 或 PUT 请求时，Express.js 会自动解析请求体中的 JSON 数据，使其可以通过 req.body 访问。
+app.use(express.urlencoded({ extended: false }));//解析 URL 编码的请求体
+app.use(cookieParser());//cookie-parser 会解析 cookies，并将结果添加到 req.cookies 对象中。
+app.use(express.static(path.join(__dirname, 'public')));//配置为提供 public 目录下的静态文件
+
+// 添加根路由，返回 "hello world!"
+/**
+ * 根路由处理函数
+ * @param {Object} req - 请求对象
+ * @param {Object} res - 响应对象
+ */
+app.get("/", (req, res) => {
+    res.send("hello world!");
+});
+
+app.use(testRouter);
+app.use(userRouter);
+app.use(taotiaoRouter);
+
+// 处理404错误
+app.use(function (req, res, next) {
+    next(httpErrors(404));
+});
+
+// 处理异常错误
+app.use(function (err, req, res, next) {
+    // 设置局部变量，仅提供开发中的错误
+    res.locals.message = err.message;
+    res.locals.error = req.app.get('env') === 'development' ? err : {};
+
+    // 渲染错误页面
+    res.status(err.status || 500);
+    res.render('error');
+});
+
+app.listen("9999",(err)=>{
+    if(err){
+        console.log("服务器启动失败",err);
+    }else{
+        console.log("服务器启动成功");
+    }
+});
+// module.exports = app;
+```
+
+注意请求头里面的z_c0字段需要自己登陆知乎后通过查看cookie中粘贴到代码中替换为自己的才能获取到数据。
+
+```javascript
+/**
+ * routes/toutiao.js
+ */
+const express = require("express");
+const router = express.Router()
+const axios = require('axios');
+const cheerio = require('cheerio');
+const fs = require("fs")
+
+
+router.get('/toutiao/hot_list', async (req, res) => {
+    try {
+        // 目标URL，这里以某个示例网页为例
+        const targetUrl = "https://www.zhihu.com/hot";
+        //z_c0 替换为登陆知乎后Cookie中z_c0字符串
+        const header = {
+            Cookie: "z_c0=*********"
+        }
+        if (!targetUrl) {
+            return res.status(400).send('URL is required');
+        }
+        // 使用axios获取页面内容
+        const response = await fetchHTML(targetUrl, header);
+
+        const html = response.data;
+
+        console.log("data", html);
+
+        const jsonData = extractInformation(html)
+
+        //写入到本地文件中
+        writeToFile("zhihu.txt", jsonData)
+
+        // 通过res.json()方法返回json数据格式数据
+        res.json(jsonData);
+
+
+    } catch (error) {
+        console.error('Scraping error:', error);
+        res.status(500).send('Server Error');
+    }
+});
+
+async function fetchHTML(url, header) {
+    const resopnse = await axios.get(url,
+        header
+    );
+    return resopnse;
+}
+
+function extractInformation(html) {
+    // 使用cheerio加载页面内容，类似于jQuery
+    const $ = cheerio.load(html);
+    console.log("$$$$", $);
+
+    // 使用选择器语法筛选有效数据
+    const titles = $('h2.ContentItem-title').map((i, el) => $(el).text()).get();
+    const content = $('div.RichContent-inner > .css-376mun > span.RichText').map((i, el) => $(el).text()).get();
+
+    // 返回提取的数据 
+    return {
+        titles,
+        content
+    }
+}
+
+function writeToFile(filename, content) {
+    fs.writeFileSync(filename, JSON.stringify(content), "utf-8", (err) => {
+        if (err) {
+            console.error('Writing to file failed:', err);
+        } else {
+            console.log('Success writing to file:', filename);
+        }
+    })
+}
+
+module.exports = router
+```
+
+-package.json
+
+```json
+
+{
+  "name": "xy-express-admin",
+  "version": "1.0.0",
+  "description": "express搭建爬虫系统",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon ./bin/www",
+    "start": "node index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.6.2",
+    "cheerio": "^1.0.0-rc.12",
+    "cookie-parser": "^1.4.6",
+    "debug": "^4.3.4",
+    "express": "^4.18.2",
+    "http-errors": "^2.0.0",
+    "morgan": "^1.10.0",
+    "nodemon": "^3.0.1",
+    "pug": "^3.0.2"
+  }
+}
+```
+
+这里启动我们使用的是:
+
+```shell
+npm run start
+```
+
+如果拥有比较完整的express框架则可以使用
+
+```shell
+npm run dev
+```
+
+
+
+##### 经验总结：
+
+请求处理:xios是一个流行的选择，因为它支持promise，并且axios能自动识别http,https请求易于使用。
+
+HTML解析：使用`cheerio`等库可以轻松地在服务器端操作DOM，提取所需信息。
+
+数据存储：提取的数据需要存储到数据库或文件系统中。选择合适的存储方式，如MongoDB、MySQL或JSON文件等。
+
+错误处理：网络请求可能会失败，所以需要合理的错误处理逻辑来确保爬虫的稳定性。
+
+用户代理(User-Agent)随机化: 设置随机的User-Agent可以模仿不同的浏览器访问，降低被识别为爬虫的风险。
+
+代理和IP旋转: 如果目标网站有反爬虫策略，可能需要使用代理服务器来避免被封禁。
+
+
+
