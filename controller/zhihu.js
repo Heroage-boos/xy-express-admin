@@ -10,13 +10,15 @@ const { writeToFile } = require('../utils/method');
 app.get('/', async (req, res) => {
     const targetUrl = "https://www.zhihu.com/";
     const headers = {
-        Cookie: "z_c0=2|1:0|10:1701746396|4:z_c0|92:Mi4xMmFRQkVRQUFBQUFBb0JYYU5QN01GeGNBQUFCZ0FsVk4yLVJiWmdCcnJCMXE0N2NTam4yM2o4c3ZwRzNseVZySy1B|5764fb4372f14544c7aaa999bcfcb0079bc1346d16db63d6a8a4a12a31004bd5"
+        Cookie: "z_c0=2|1:0|10:1701746396|4:z_c0|92:Mi4xMmFRQkVRQUFBQUFBb0JYYU5QN01GeGNBQUFCZ0FsVk4yLVJiWmdCcnJCMXE0N2NTam4yM2o4c3ZwRzNseVZySy1B|5764fb4372f14544c7aaa999bcfcb0079bc1346d16db63d6a8a4a12a31004bd5",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0.0 Safari/537.36"
     }
-
+    
     try {
-        const html = await axios.get(targetUrl, {
+        const response = await axios.get(targetUrl, {
             headers
         });
+        const html = response.data
         const info = extractInformation(html);
         writeToFile('./public/txt/zhihu.txt', info);
         res.json(info);
@@ -29,7 +31,7 @@ app.get('/', async (req, res) => {
 //筛选有效信息
 function extractInformation(html) {
     console.log("知乎htmlhtml", html);
-    const $ = cheerio.load(html.data);
+    const $ = cheerio.load(html);
     const titles = $('h2.ContentItem-title').map((i, el) => $(el).text()).get();
     const content = $('div.RichContent-inner > .css-376mun > span.RichText').map((i, el) => $(el).text()).get();
     return { titles, content };
