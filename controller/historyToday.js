@@ -8,19 +8,33 @@ const axios = require("axios")
 const { writeToFile } = require('../utils/method');
 
 app.get('/', async (req, res) => {
-    const targetUrl = "https://zh.wikipedia.org/wiki/Wikipedia:%E5%8E%86%E5%8F%B2%E4%B8%8A%E7%9A%84%E4%BB%8A%E5%A4%A9";
-    const header = {
-        Cookie: "GeoIP=HK:::22.26:114.17:v4; zhwikimwuser-sessionId=a93a4e5bfcea0434e753; WMF-Last-Access=08-Dec-2023; WMF-Last-Access-Global=08-Dec-2023; NetworkProbeLimit=0.001",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.93 Safari/537.36",
+    console.log("req", req.query);
+    //获取当前日期的年月日
+    const { year, month, day, id } = req.query
+
+    let targetUrl = "https://today.supfree.net/"
+    if (id) {
+        targetUrl += `/sheshou.asp?id=${id}`
+    } else if (month && day) {
+        targetUrl += `/sheshou.asp?m=${month}&d=${day}`
+
+    } else if (year) {
+        targetUrl += `/mojie.asp?y=${year}`
+
+    } else {
+        res.send("参数错误");
+    }
+    const headers = {
         "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
     }
     try {
-        console.log("1111")
-        const html = await axios.get(targetUrl, { headers: header });
+        console.log("1111", targetUrl)
+        const html = await axios.get(targetUrl, { headers });
         console.log("html", html)
-        const info = extractInformation(html);
-        writeToFile('./public/txt/history_today.txt', info);
-        res.json(info);
+        const data = extractInformation(html.data);
+        writeToFile('./public/txt/history_today.txt', data);
+        res.json(data);
     } catch (err) {
         res.status(500).send('Server Error!');
     }
@@ -30,9 +44,40 @@ app.get('/', async (req, res) => {
 function extractInformation(html) {
     const $ = cheerio.load(html);
     console.log("$$$$$", $)
-    const date = $('.mw-content-ltr > table > .mw-heading .mw-headline').map((i, el) => $(el).text()).get();
-    const content = $('.mw-content-ltr > table > .selected-anniversary').map((i, el) => $(el).text()).get();
-    return { date, content };
+    const yearInfo = $('div.cdiv > p:first-child > a:nth-child(1)').map((i, el) => {
+        const yearTitle = $(el).text()
+        const href = $(el).attr('href');
+        const yearId = href.split('=')[1];
+        return { yearTitle, yearId };
+    })
+    const monthDayInfo = $('div.cdiv > p:first-child > a:nth-child(2)').map((i, el) => {
+        const monthDayTitle = $(el).text()
+        const href = $(el).attr('href');
+        const monthId = href.split('=')[1].split("&")[0];
+        const dayId = href.split('=')[2];
+        return { monthDayTitle, monthId, dayId };
+    })
+
+    const todayTitle = $('div.cdiv > p:first-child > a:nth-child(3)').map((i, el) => {
+        const title = $(el).text()
+        const href = $(el).attr('href');
+        const id = href.split('=')[1];
+        return { title, id };
+    })
+
+    let todayInfo = []
+    for (let i = 0; i < yearInfo.length; i++) {
+        todayInfo.push({
+            yearTitle: yearInfo[i].yearTitle,
+            yearId: yearInfo[i].yearId,
+            monthDayTitle: monthDayInfo[i].monthDayTitle,
+            monthId: monthDayInfo[i].monthId,
+            dayId: monthDayInfo[i].dayId,
+            title: todayTitle[i].title,
+            titleId: todayTitle[i].id,
+        });
+    }
+    return { todayInfo };
 }
 
 module.exports = app;
