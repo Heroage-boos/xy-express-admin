@@ -8,8 +8,8 @@ const httpErrors = require("http-errors");
 const path = require("path");
 const logger = require('morgan'); //记录日志
 var cookieParser = require('cookie-parser'); //cookie解析器
-const routers=require("./routes/index")
-const router=express.Router();
+const routers = require("./routes/index")
+const router = express.Router();
 const testRouter = require("./routes/test");
 const userRouter = require("./routes/user");
 
@@ -27,6 +27,12 @@ app.use(express.urlencoded({ extended: false }));//解析 URL 编码的请求体
 app.use(cookieParser());//cookie-parser 会解析 cookies，并将结果添加到 req.cookies 对象中。
 app.use(express.static(path.join(__dirname, 'public')));//配置为提供 public 目录下的静态文件
 
+app.use(function (req, res, next) {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+    next();
+});
+
 // 添加根路由，返回 "hello world!"
 /**
  * 根路由处理函数
@@ -43,7 +49,7 @@ app.use(userRouter);
 
 //爬虫路由
 for (const r of routers) {
-    console.log("rrrrrrr",r)
+    console.log("rrrrrrr", r)
     app.use(r.path, require(path.join(__dirname, r.component))); // 添加路由处理中间件
 }
 app.use(router);
